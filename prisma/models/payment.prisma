@@ -7,11 +7,14 @@ model Payment {
   status String @default("PENDING")
 
   amount   Decimal @db.Decimal(12, 2)
-  currency String  @default("SGD")
+  currency String  @default("USD")
 
   provider String?
 
   providerReference String? @unique
+
+  /// Idempotency key for simulated/provider webhook events.
+  providerEventId String? @unique
 
   paidAt DateTime?
 

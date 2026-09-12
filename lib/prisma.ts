@@ -11,7 +11,9 @@ export type PrismaClientOptions = {
 
 function createPrismaClient(options: PrismaClientOptions = {}) {
   const connectionString =
-    options.connectionString ?? process.env.DATABASE_URL;
+    options.connectionString ??
+    process.env.DATABASE_URL ??
+    process.env.DIRECT_URL;
 
   if (!connectionString) {
     throw new Error(

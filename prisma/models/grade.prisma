@@ -18,6 +18,7 @@ model Grade {
 
   level           Level            @relation(fields: [levelId], references: [id])
   studentBookings StudentBooking[]
+  prices          TrialClassPrice[]
 
   @@unique([levelId, code])
   @@index([levelId])

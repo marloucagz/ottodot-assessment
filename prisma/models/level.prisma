@@ -20,6 +20,7 @@ model Level {
   grades          Grade[]
   levelSubjects   LevelSubject[]
   studentBookings StudentBooking[]
+  prices          TrialClassPrice[]
 
   @@unique([learningMethodId, code])
   @@index([learningMethodId])

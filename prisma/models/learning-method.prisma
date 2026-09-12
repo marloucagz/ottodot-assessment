@@ -14,7 +14,8 @@ model LearningMethod {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  levels Level[]
+  levels          Level[]
+  studentBookings StudentBooking[]
 
   @@index([active])
 }

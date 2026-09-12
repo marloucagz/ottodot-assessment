@@ -6,6 +6,10 @@ model StudentBookingSubject {
 
   subjectSnapshot String?
 
+  /// Snapshot of TrialClassPrice.amount at booking time (server source of truth).
+  unitPrice Decimal @db.Decimal(12, 2)
+  currency  String  @default("USD")
+
   createdAt DateTime @default(now())
 
   studentBooking StudentBooking @relation(fields: [studentBookingId], references: [id], onDelete: Cascade)

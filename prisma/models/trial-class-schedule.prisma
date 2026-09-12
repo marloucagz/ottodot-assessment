@@ -1,0 +1,26 @@
+/// Recurring schedule that can generate trial class slot occurrences.
+model TrialClassSchedule {
+  id String @id @default(cuid())
+
+  code String? @unique
+  name String?
+
+  /// 0=Sunday .. 6=Saturday (JS Date.getDay convention).
+  dayOfWeek Int
+
+  /// Local wall-clock times within timezone, e.g. "10:00" / "11:00".
+  startTime String
+  endTime   String
+
+  timezone String @default("Asia/Singapore")
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slots TrialClassSlot[]
+
+  @@index([active])
+  @@index([dayOfWeek])
+}

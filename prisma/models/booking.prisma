@@ -6,6 +6,9 @@ model Booking {
 
   userId String
 
+  /// Client-supplied key; unique per user to make create idempotent.
+  idempotencyKey String?
+
   /// DRAFT | PENDING_PAYMENT | CONFIRMED | EXPIRED | CANCELLED
   status String @default("DRAFT")
 
@@ -16,7 +19,7 @@ model Booking {
   tax      Decimal @default(0) @db.Decimal(12, 2)
   total    Decimal @default(0) @db.Decimal(12, 2)
 
-  currency String @default("SGD")
+  currency String @default("USD")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -26,6 +29,7 @@ model Booking {
   reservation SlotReservation?
   payment     Payment?
 
+  @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([status])
   @@index([expiresAt])

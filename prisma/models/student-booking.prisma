@@ -5,19 +5,22 @@ model StudentBooking {
   bookingId String
   studentId String
 
-  levelId String
-  gradeId String
+  learningMethodId String
+  levelId          String
+  gradeId          String
 
-  levelSnapshot String?
-  gradeSnapshot String?
+  learningMethodSnapshot String?
+  levelSnapshot          String?
+  gradeSnapshot          String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  level   Level   @relation(fields: [levelId], references: [id])
-  grade   Grade   @relation(fields: [gradeId], references: [id])
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id])
+  learningMethod LearningMethod @relation(fields: [learningMethodId], references: [id])
+  level          Level          @relation(fields: [levelId], references: [id])
+  grade          Grade          @relation(fields: [gradeId], references: [id])
+  booking        Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  student        Student        @relation(fields: [studentId], references: [id])
 
   subjects     StudentBookingSubject[]
   capabilities StudentCapabilitySelection[]
@@ -25,6 +28,7 @@ model StudentBooking {
   @@unique([bookingId, studentId])
   @@index([bookingId])
   @@index([studentId])
+  @@index([learningMethodId])
   @@index([levelId])
   @@index([gradeId])
 }

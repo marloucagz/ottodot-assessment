@@ -17,6 +17,7 @@ model Subject {
   levelSubjects          LevelSubject[]
   studentBookingSubjects StudentBookingSubject[]
   capabilities           Capability[]
+  prices                 TrialClassPrice[]
 
   @@index([active])
 }

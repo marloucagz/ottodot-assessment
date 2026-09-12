@@ -1,23 +1,28 @@
-/// Bookable trial class time slot with capacity inventory.
 model TrialClassSlot {
   id String @id @default(cuid())
 
+  scheduleId String?
+
   startsAt DateTime
   endsAt   DateTime
+
+  timezone String @default("Asia/Singapore")
 
   capacity  Int
   available Int
 
   active Boolean @default(true)
 
-  title       String?
-  description String?
+  cancelledAt        DateTime?
+  cancellationReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  schedule     TrialClassSchedule? @relation(fields: [scheduleId], references: [id])
   reservations SlotReservation[]
 
+  @@index([scheduleId])
   @@index([startsAt])
   @@index([endsAt])
   @@index([active])

@@ -10,10 +10,12 @@
 | `subject.prisma` | `Subject` |
 | `level-subject.prisma` | `LevelSubject` |
 | `capability.prisma` | `Capability` |
+| `trial-class-price.prisma` | `TrialClassPrice` |
 | `booking.prisma` | `Booking` |
 | `student-booking.prisma` | `StudentBooking` |
 | `student-booking-subject.prisma` | `StudentBookingSubject` |
 | `student-capability-selection.prisma` | `StudentCapabilitySelection` |
+| `trial-class-schedule.prisma` | `TrialClassSchedule` |
 | `trial-class-slot.prisma` | `TrialClassSlot` |
 | `slot-reservation.prisma` | `SlotReservation` |
 | `payment.prisma` | `Payment` |
