@@ -1,0 +1,24 @@
+/// Bookable trial class time slot with capacity inventory.
+model TrialClassSlot {
+  id String @id @default(cuid())
+
+  startsAt DateTime
+  endsAt   DateTime
+
+  capacity  Int
+  available Int
+
+  active Boolean @default(true)
+
+  title       String?
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations SlotReservation[]
+
+  @@index([startsAt])
+  @@index([endsAt])
+  @@index([active])
+}

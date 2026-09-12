@@ -1,0 +1,30 @@
+/// Temporary hold on slot inventory before payment.
+model SlotReservation {
+  id String @id @default(cuid())
+
+  slotId    String
+  bookingId String @unique
+
+  /// Seats consumed (e.g. number of students on the booking).
+  quantity Int @default(1)
+
+  /// ACTIVE | CONFIRMED | EXPIRED | RELEASED
+  status String @default("ACTIVE")
+
+  reservedAt DateTime @default(now())
+
+  expiresAt DateTime
+
+  confirmedAt DateTime?
+  releasedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slot    TrialClassSlot @relation(fields: [slotId], references: [id])
+  booking Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([slotId, status])
+  @@index([status, expiresAt])
+  @@index([expiresAt])
+}

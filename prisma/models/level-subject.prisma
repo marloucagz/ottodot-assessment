@@ -1,0 +1,19 @@
+/// Subjects available for a given level.
+model LevelSubject {
+  id String @id @default(cuid())
+
+  levelId   String
+  subjectId String
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  level   Level   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, subjectId])
+  @@index([levelId])
+  @@index([subjectId])
+}

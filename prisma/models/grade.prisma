@@ -1,0 +1,25 @@
+/// Grade within a level (e.g. Grade 1..6).
+model Grade {
+  id String @id @default(cuid())
+
+  levelId String
+
+  code String
+  name String
+
+  description String?
+
+  active Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  level           Level            @relation(fields: [levelId], references: [id])
+  studentBookings StudentBooking[]
+
+  @@unique([levelId, code])
+  @@index([levelId])
+  @@index([active])
+}

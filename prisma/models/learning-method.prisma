@@ -1,0 +1,20 @@
+/// Curriculum / learning method catalog (e.g. Singapore, UK, Australian).
+model LearningMethod {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  description String?
+
+  active Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  levels Level[]
+
+  @@index([active])
+}

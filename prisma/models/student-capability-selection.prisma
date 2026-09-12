@@ -1,0 +1,17 @@
+model StudentCapabilitySelection {
+  id String @id @default(cuid())
+
+  studentBookingId String
+  capabilityId     String
+
+  capabilitySnapshot String?
+
+  createdAt DateTime @default(now())
+
+  studentBooking StudentBooking @relation(fields: [studentBookingId], references: [id], onDelete: Cascade)
+  capability     Capability     @relation(fields: [capabilityId], references: [id])
+
+  @@unique([studentBookingId, capabilityId])
+  @@index([studentBookingId])
+  @@index([capabilityId])
+}

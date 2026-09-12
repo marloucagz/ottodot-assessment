@@ -1,0 +1,32 @@
+model Booking {
+  id String @id @default(cuid())
+
+  /// Human-readable booking number (e.g. TRIAL-2026-000123).
+  reference String @unique
+
+  userId String
+
+  /// DRAFT | PENDING_PAYMENT | CONFIRMED | EXPIRED | CANCELLED
+  status String @default("DRAFT")
+
+  expiresAt DateTime?
+
+  subtotal Decimal @default(0) @db.Decimal(12, 2)
+  discount Decimal @default(0) @db.Decimal(12, 2)
+  tax      Decimal @default(0) @db.Decimal(12, 2)
+  total    Decimal @default(0) @db.Decimal(12, 2)
+
+  currency String @default("SGD")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id])
+  students    StudentBooking[]
+  reservation SlotReservation?
+  payment     Payment?
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}

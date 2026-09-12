@@ -1,0 +1,17 @@
+model StudentBookingSubject {
+  id String @id @default(cuid())
+
+  studentBookingId String
+  subjectId        String
+
+  subjectSnapshot String?
+
+  createdAt DateTime @default(now())
+
+  studentBooking StudentBooking @relation(fields: [studentBookingId], references: [id], onDelete: Cascade)
+  subject        Subject        @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentBookingId, subjectId])
+  @@index([studentBookingId])
+  @@index([subjectId])
+}

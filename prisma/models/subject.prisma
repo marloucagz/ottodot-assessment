@@ -1,0 +1,22 @@
+/// Subject catalog (e.g. MATH, SCIENCE).
+model Subject {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  description String?
+
+  active Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  levelSubjects          LevelSubject[]
+  studentBookingSubjects StudentBookingSubject[]
+  capabilities           Capability[]
+
+  @@index([active])
+}
