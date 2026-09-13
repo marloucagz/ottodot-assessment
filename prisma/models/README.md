@@ -19,6 +19,7 @@
 | `trial-class-slot.prisma` | `TrialClassSlot` |
 | `slot-reservation.prisma` | `SlotReservation` |
 | `payment.prisma` | `Payment` |
+| `demo-seed-state.prisma` | `DemoSeedState` |
 
 Generator and datasource live in `../schema.prisma`. Load the whole `prisma/` directory:
 

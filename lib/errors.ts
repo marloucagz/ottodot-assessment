@@ -32,6 +32,8 @@ export type ErrorCode =
   | "PAYMENT_ALREADY_PAID"
   | "CAPACITY_CONFLICT"
   | "IDEMPOTENCY_CONFLICT"
+  | "ALREADY_SEEDED"
+  | "NOT_SEEDED"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {

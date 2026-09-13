@@ -65,6 +65,12 @@ export async function createTrialClassSlot(input: TrialClassSlotCreateInput) {
   });
 }
 
+const slotWithSchedule = {
+  schedule: {
+    select: { id: true, name: true, timezone: true, startTime: true, endTime: true },
+  },
+} as const;
+
 export async function listTrialClassSlots(
   filters: TrialClassSlotListFilters = {},
 ) {
@@ -73,12 +79,16 @@ export async function listTrialClassSlots(
       ...(filters.scheduleId ? { scheduleId: filters.scheduleId } : {}),
       ...(filters.active !== undefined ? { active: filters.active } : {}),
     },
+    include: slotWithSchedule,
     orderBy: [{ startsAt: "asc" }],
   });
 }
 
 export async function getTrialClassSlotById(id: string) {
-  const row = await prisma.trialClassSlot.findUnique({ where: { id } });
+  const row = await prisma.trialClassSlot.findUnique({
+    where: { id },
+    include: slotWithSchedule,
+  });
   if (!row) {
     throw new AppError("NOT_FOUND", "Trial class slot not found", 404);
   }

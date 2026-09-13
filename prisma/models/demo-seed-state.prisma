@@ -1,0 +1,10 @@
+/// Singleton tracker for whether the demo dataset has been seeded.
+model DemoSeedState {
+  id String @id @default("default")
+
+  seeded   Boolean   @default(false)
+  seededAt DateTime?
+  version  String?
+
+  updatedAt DateTime @updatedAt
+}

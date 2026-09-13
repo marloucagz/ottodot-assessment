@@ -9,3 +9,7 @@ export * from "./trial-class-schedule.service";
 export * from "./trial-class-slot.service";
 export * from "./reservation.service";
 export * from "./booking.service";
+export * from "./user.service";
+export * from "./demo-seed.service";
+export * from "./roster.service";
+export * from "./trial-booking-demo.service";

@@ -30,6 +30,8 @@ export type CreateBookingInput = {
   slotId: string;
   idempotencyKey?: string;
   students: CreateBookingStudentInput[];
+  /** Demo-only override; ignored by public booking schema. Max enforced by demo wrapper. */
+  ttlSeconds?: number;
 };
 
 function assertUniqueIds(ids: string[], code: string, label: string) {
@@ -82,6 +84,8 @@ function formatBookingResponse(
       status: booking.status,
       total: booking.total.toString(),
       subtotal: booking.subtotal.toString(),
+      discount: booking.discount.toString(),
+      tax: booking.tax.toString(),
       currency: booking.currency,
       expiresAt: booking.expiresAt?.toISOString() ?? null,
       userId: booking.userId,
@@ -266,6 +270,69 @@ async function resolveBookingStudents(
   return { resolvedStudents, linePrices };
 }
 
+export async function quoteBooking(input: CreateBookingInput) {
+  const quantity = input.students.length;
+  if (quantity <= 0) {
+    throw new AppError("VALIDATION_ERROR", "At least one student is required", 400);
+  }
+  assertUniqueIds(
+    input.students.map((s) => s.studentId),
+    "VALIDATION_ERROR",
+    "students",
+  );
+
+  const slot = await prisma.trialClassSlot.findUnique({
+    where: { id: input.slotId },
+  });
+  if (!slot) {
+    throw new AppError("SLOT_NOT_FOUND", "Slot not found", 404);
+  }
+
+  const { resolvedStudents, linePrices } = await resolveBookingStudents(input);
+  const subtotal = decimalSum(linePrices);
+  const discount = new Decimal(0);
+  const tax = new Decimal(0);
+  const total = subtotal.sub(discount).add(tax);
+
+  const studentRows = await prisma.student.findMany({
+    where: { id: { in: input.students.map((s) => s.studentId) } },
+  });
+  const studentName = (id: string) => {
+    const row = studentRows.find((s) => s.id === id);
+    return row
+      ? `${row.firstName}${row.lastName ? ` ${row.lastName}` : ""}`.trim()
+      : id;
+  };
+
+  const lines = resolvedStudents.flatMap((s) =>
+    s.subjects.map((subject) => ({
+      studentId: s.input.studentId,
+      studentName: studentName(s.input.studentId),
+      subjectId: subject.id,
+      subjectName: subject.name,
+      unitPrice: subject.unitPrice.toString(),
+    })),
+  );
+
+  return {
+    quantity,
+    currency: CURRENCY_USD,
+    subtotal: subtotal.toString(),
+    discount: discount.toString(),
+    tax: tax.toString(),
+    total: total.toString(),
+    slot: {
+      id: slot.id,
+      capacity: slot.capacity,
+      available: slot.available,
+      startsAt: slot.startsAt.toISOString(),
+      endsAt: slot.endsAt.toISOString(),
+      timezone: slot.timezone,
+    },
+    lines,
+  };
+}
+
 export async function createBooking(input: CreateBookingInput) {
   const quantity = input.students.length;
   if (quantity <= 0) {
@@ -299,12 +366,18 @@ export async function createBooking(input: CreateBookingInput) {
 
   const { resolvedStudents, linePrices } = await resolveBookingStudents(input);
   const subtotal = decimalSum(linePrices);
-  const total = subtotal;
+  const discount = new Decimal(0);
+  const tax = new Decimal(0);
+  const total = subtotal.sub(discount).add(tax);
 
   const now = new Date();
-  const expiresAt = new Date(
-    now.getTime() + config.reservationTtlSeconds * 1000,
-  );
+  const ttlSeconds =
+    typeof input.ttlSeconds === "number" &&
+    Number.isFinite(input.ttlSeconds) &&
+    input.ttlSeconds > 0
+      ? input.ttlSeconds
+      : config.reservationTtlSeconds;
+  const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
 
   try {
     const bookingId = await prisma.$transaction(
@@ -350,6 +423,8 @@ export async function createBooking(input: CreateBookingInput) {
               status: BookingStatus.PENDING_PAYMENT,
               expiresAt,
               subtotal,
+              discount,
+              tax,
               total,
               currency: CURRENCY_USD,
             },
@@ -738,6 +813,65 @@ export async function confirmPayment(params: {
       paymentId: payment.id,
       bookingId: payment.bookingId,
       status: PaymentStatus.PAID,
+      idempotent: false,
+    };
+  });
+}
+
+/** Mock payment failure: PENDING -> FAILED. Leaves reservation ACTIVE. */
+export async function failSimulatedPayment(params: {
+  userId: string;
+  paymentId?: string;
+  bookingId?: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const payment = params.paymentId
+      ? await tx.payment.findUnique({
+          where: { id: params.paymentId },
+          include: { booking: true },
+        })
+      : await tx.payment.findFirst({
+          where: { bookingId: params.bookingId },
+          include: { booking: true },
+        });
+
+    if (!payment) {
+      throw new AppError("PAYMENT_NOT_FOUND", "Payment not found", 404);
+    }
+    if (payment.booking.userId !== params.userId) {
+      throw new AppError("FORBIDDEN", "Payment does not belong to user", 403);
+    }
+    if (payment.status === PaymentStatus.FAILED) {
+      return {
+        paymentId: payment.id,
+        bookingId: payment.bookingId,
+        status: PaymentStatus.FAILED,
+        idempotent: true,
+      };
+    }
+    if (payment.status === PaymentStatus.PAID) {
+      throw new AppError(
+        "PAYMENT_ALREADY_PAID",
+        "Payment already paid",
+        409,
+      );
+    }
+
+    const updated = await tx.payment.updateMany({
+      where: {
+        id: payment.id,
+        status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
+      },
+      data: { status: PaymentStatus.FAILED },
+    });
+    if (updated.count !== 1) {
+      throw new AppError("PAYMENT_NOT_ALLOWED", "Payment cannot fail", 409);
+    }
+
+    return {
+      paymentId: payment.id,
+      bookingId: payment.bookingId,
+      status: PaymentStatus.FAILED,
       idempotent: false,
     };
   });

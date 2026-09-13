@@ -108,7 +108,7 @@ export const slotCreateSchema = z.object({
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
   timezone: z.string().min(1).optional(),
-  capacity: z.number().int().positive(),
+  capacity: z.number().int().positive().max(4),
   active: z.boolean().optional(),
 });
 
@@ -117,7 +117,7 @@ export const slotUpdateSchema = z.object({
   startsAt: z.coerce.date().optional(),
   endsAt: z.coerce.date().optional(),
   timezone: z.string().min(1).optional(),
-  capacity: z.number().int().positive().optional(),
+  capacity: z.number().int().positive().max(4).optional(),
   active: z.boolean().optional(),
 });
 
@@ -139,6 +139,13 @@ export const createBookingSchema = z.object({
   slotId: cuidSchema,
   idempotencyKey: z.string().min(1).optional(),
   students: z.array(bookingStudentSchema).min(1),
+});
+
+export const userUpdateSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().min(1).optional().nullable(),
 });
 
 export const bookingOwnerSchema = z.object({

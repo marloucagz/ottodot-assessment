@@ -483,17 +483,113 @@ describe("trial class booking concurrency", () => {
   });
 
   it("capacity decrease below consumed is rejected", async () => {
-    const slot = await createSlot(prisma, fixture.schedule.id, { capacity: 10 });
+    const slot = await createSlot(prisma, fixture.schedule.id, { capacity: 4 });
     await prisma.trialClassSlot.update({
       where: { id: slot.id },
-      data: { available: 3 },
+      data: { available: 1 },
     });
 
     const { updateTrialClassSlot } = await import(
       "@/server/services/trial-class-slot.service"
     );
     await expect(
-      updateTrialClassSlot(slot.id, { capacity: 5 }),
+      updateTrialClassSlot(slot.id, { capacity: 2 }),
     ).rejects.toMatchObject({ code: "CAPACITY_CONFLICT" });
   });
+
+  it("TEST 19: high concurrency 20 vs capacity 4 — exactly 4 succeed", async () => {
+    const slot = await createSlot(prisma, fixture.schedule.id, {
+      capacity: 4,
+    });
+
+    const users = [];
+    for (let i = 0; i < 20; i += 1) {
+      const user = await prisma.user.create({
+        data: {
+          email: `stress-${fixture.suffix}-${i}@test.local`,
+          firstName: "S",
+          lastName: `${i}`,
+          students: { create: [{ firstName: `Kid${i}` }] },
+        },
+        include: { students: true },
+      });
+      users.push(user);
+    }
+
+    const results = await Promise.allSettled(
+      users.map((user) =>
+        createBooking({
+          userId: user.id,
+          slotId: slot.id,
+          students: [studentPayload(fixture, user.students[0]!.id)],
+        }),
+      ),
+    );
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(4);
+    expect(rejected).toHaveLength(16);
+    for (const r of rejected) {
+      expect((r as PromiseRejectedResult).reason).toMatchObject({
+        code: "SLOT_UNAVAILABLE",
+      });
+    }
+
+    const updated = await prisma.trialClassSlot.findUniqueOrThrow({
+      where: { id: slot.id },
+    });
+    expect(updated.available).toBe(0);
+    expect(updated.available).toBeGreaterThanOrEqual(0);
+    expect(updated.available).toBeLessThanOrEqual(updated.capacity);
+
+    const reservations = await prisma.slotReservation.findMany({
+      where: { slotId: slot.id },
+    });
+    expect(reservations).toHaveLength(4);
+  }, 120_000);
+
+  it("TEST 20: roster includes confirmed booking and excludes expired", async () => {
+    const { getSlotRoster } = await import(
+      "@/server/services/roster.service"
+    );
+    const slot = await createSlot(prisma, fixture.schedule.id, { capacity: 4 });
+
+    const created = await createBooking({
+      userId: fixture.userA.id,
+      slotId: slot.id,
+      students: [studentPayload(fixture, fixture.studentA1.id)],
+    });
+
+    await confirmPayment({
+      userId: fixture.userA.id,
+      bookingId: created.booking.id,
+      requireUser: true,
+    });
+
+    const shortLived = await createBooking({
+      userId: fixture.userB.id,
+      slotId: slot.id,
+      students: [studentPayload(fixture, fixture.studentB1.id)],
+      ttlSeconds: 2,
+    });
+
+    await new Promise((r) => setTimeout(r, 2500));
+    await expireReservations();
+
+    const roster = await getSlotRoster(slot.id);
+    expect(roster.slot.available).toBe(3);
+    expect(roster.counts.confirmed).toBe(1);
+    expect(roster.counts.reserved).toBe(0);
+    expect(
+      roster.entries.some(
+        (e) => e.bookingReference === created.booking.reference,
+      ),
+    ).toBe(true);
+    expect(
+      roster.entries.some(
+        (e) => e.bookingReference === shortLived.booking.reference,
+      ),
+    ).toBe(false);
+  }, 30_000);
 });
