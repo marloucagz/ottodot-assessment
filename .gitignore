@@ -50,8 +50,8 @@ next-env.d.ts
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# Cursor plans (keep local; do not commit)
-.cursor/plans/
+# Cursor local files (docs, plans, agent notes)
+.cursor/
 
 # Prisma
 *.db

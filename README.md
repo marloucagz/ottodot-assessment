@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trial Class Booking
 
-## Getting Started
+Concurrency-safe trial-class booking for parents reserving live seats for their children. Inventory is acquired with a conditional PostgreSQL update so a last-seat race produces exactly one success.
 
-First, run the development server:
+Stack: Next.js 16 (App Router), Prisma 6, PostgreSQL (Supabase), Vitest.
+
+## Prerequisites
+
+- Node.js 20+
+- npm
+- A Supabase Postgres database (or any PostgreSQL 15+)
+
+## Setup
+
+### 1. Install
+
+```bash
+npm install
+```
+
+`postinstall` runs `prisma generate --schema prisma`.
+
+### 2. Environment
+
+Copy `.env.example` to `.env` and fill in your project values. Do not commit `.env`.
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DIRECT_URL` | Yes (local) | Session-mode Postgres (`:5432`). Used by local Next.js, Prisma `$transaction`, and tests. |
+| `DATABASE_URL` | Yes (prod) | Transaction pooler (`:6543`, `pgbouncer=true`) for serverless runtime. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key. |
+| `RESERVATION_TTL_SECONDS` | No | Hold TTL in seconds. Defaults to `30` if unset. |
+| `CRON_SECRET` | For expire/reconcile jobs | Bearer token for `/api/internal/*`. |
+| `PAYMENT_WEBHOOK_SECRET` | For webhook simulate | Header `x-webhook-secret`. |
+| `TEST_DATABASE_URL` | No | Dedicated test DB. Falls back to `DIRECT_URL` / `DATABASE_URL`. |
+| `DEMO_ENABLED` / `DEMO_SECRET` | Production demo only | Demo seed/reset endpoints are open in development. |
+
+In development the Prisma client prefers `DIRECT_URL`. Interactive transactions and last-seat `updateMany` concurrency need session mode, not the Supabase transaction pooler.
+
+### 3. Migrate
+
+Prisma schema is the whole `prisma/` directory (generator in `prisma/schema.prisma`, models in `prisma/models/`).
+
+```bash
+npx prisma migrate deploy --schema prisma
+npm run prisma:generate
+```
+
+For local iteration with a migration prompt:
+
+```bash
+npm run prisma:migrate
+```
+
+### 4. Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). `/` redirects to the seed page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Seed demo data
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use either:
 
-## Learn More
+1. [http://localhost:3000/trial-booking/seed](http://localhost:3000/trial-booking/seed) → **Seed**
+2. CLI: `npm run prisma:seed`
 
-To learn more about Next.js, take a look at the following resources:
+This creates two parents (`demo-parent-a@seed.local`, `demo-parent-b@seed.local`) and four trial slots (last seat, multi-child, happy path, expiration). Seed is guarded by a Postgres advisory lock.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## App map
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| URL | Audience |
+|---|---|
+| `/trial-booking/seed` | Operator — seed / reset catalog |
+| `/trial-booking/book` | Parent — booking wizard |
+| `/trial-booking/payment/[bookingId]` | Parent — simulated payment |
+| `/trial-booking/demo` | Reviewer — last-seat and other race scenarios |
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev              # Next.js dev server
+npm run build            # Production build
+npm run start            # Serve production build
+npm run lint
+npm run typecheck
+npm test                 # Vitest integration tests (needs Postgres)
+npm run test:watch
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:studio
+npm run prisma:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Tests require a reachable Postgres URL (`TEST_DATABASE_URL`, else `DIRECT_URL`, else `DATABASE_URL`).
+
+## Last-seat race (short)
+
+`POST /api/bookings` acquires seats inside a transaction with:
+
+```sql
+UPDATE "TrialClassSlot"
+SET available = available - :quantity
+WHERE id = :slotId
+  AND active = true
+  AND "cancelledAt" IS NULL
+  AND "startsAt" > :now
+  AND available >= :quantity;
+```
+
+Success is `rowcount = 1`. The loser gets `409 SLOT_UNAVAILABLE`. Quote (`POST /api/bookings/quote`) does not change inventory. Holds expire via `POST /api/internal/jobs/expire-reservations` (Bearer `CRON_SECRET`).

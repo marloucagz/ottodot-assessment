@@ -8,7 +8,7 @@ function readInt(name: string, fallback: number): number {
 }
 
 export const config = {
-  reservationTtlSeconds: readInt("RESERVATION_TTL_SECONDS", 300),
+  reservationTtlSeconds: readInt("RESERVATION_TTL_SECONDS", 30),
   cronSecret: process.env.CRON_SECRET ?? "",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
   currency: "USD" as const,
